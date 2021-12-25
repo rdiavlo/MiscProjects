@@ -1,0 +1,166 @@
+import random
+import time
+
+space_width = 140
+height = 6
+
+
+class Dice:
+    def __init__(self):
+        self.round_number = 0
+        self.number_of_cubes = 3
+        self.dimension = [5, 5]
+        self.numbers_chosen = []
+        self.number_of_attempts = 3
+
+    @staticmethod
+    def generate_grid():
+        list_ = []
+        for height_ in range(height):
+            temp_list = []
+            for width_ in range(space_width):
+                temp_list.append("")
+            list_.append(temp_list)
+
+        return list_
+
+    def check_for_collision(self, point_to_check, list_of_points_validated):
+        edge_points = [point_to_check, [point_to_check[0] + self.dimension[0] - 1, point_to_check[1]],
+                       [point_to_check[0], point_to_check[1] + self.dimension[1] - 1],
+                       [point_to_check[0] + self.dimension[0] - 1, point_to_check[1] + self.dimension[1] - 1]]
+        if len(list_of_points_validated) == 0:
+            return 1
+        else:
+            for point in list_of_points_validated:
+                for point_to_check in edge_points:
+                    if point[0] <= point_to_check[0] <= point[0] + self.dimension[0] - 1:
+                        if point[1] <= point_to_check[1] <= point[1] + self.dimension[1] - 1:
+                            return 0
+        return 1
+
+    def return_cube_coordinates(self, number_of_cubes):
+        valid_points = []
+
+        start_point_x_limits, start_point_y_limits = [0, (space_width - 1) - (self.dimension[0] - 1)],\
+                                                   [0, (height - 1) - (self.dimension[1] - 1)]
+        # make provision for split cube
+
+        while True:
+            x_point, y_point = random.randint(start_point_x_limits[0], start_point_x_limits[1]), \
+                               random.randint(start_point_y_limits[0], start_point_y_limits[1])
+
+            if self.check_for_collision([x_point, y_point], valid_points):
+                valid_points.append([x_point, y_point])
+
+            if len(valid_points) == number_of_cubes:
+                break
+
+        return valid_points
+
+    def generate_dice_bitmask(self, dice_value=None):
+        point = [["#", "#","#","#","#"],
+                 ["#", " "," "," ","#"],
+                 ["#", " "," "," ","#"],
+                 ["#", " "," "," ","#"],
+                 ["#", "#","#","#","#"]
+                 ]
+        if dice_value is None:
+            dice_value = random.randint(1, 6)
+            self.numbers_chosen.append(dice_value)
+
+            point_taken = []
+            while len(point_taken) != dice_value:
+                row_ = random.randint(1, len(point) - 2)
+                column_ = random.randint(1, len(point[0]) - 2)
+                if [row_, column_] not in point_taken:
+                    point_taken.append([row_, column_])
+
+            for position__ in point_taken:
+                point[position__[0]][position__[1]] = "1"
+
+        return point
+
+    @staticmethod
+    def print_protocol(string_list):
+        for i in string_list:
+            accumulator = ""
+            for ii in i:
+                if ii == "":
+                    accumulator+=" "
+                else:
+                    accumulator+=ii
+            print(accumulator)
+
+    def populate_grid_with_bitmask_based_on_its_position(self, grid_, dice_bitmask, coordinate):
+        start_point = coordinate
+        # print(start_point, len(grid_), len(grid_[0]))
+        for row in range(len(dice_bitmask)):
+            for column in range(len(dice_bitmask[row])):
+                grid_[start_point[1] + row][start_point[0] + column] = dice_bitmask[row][column]
+        return grid_
+
+    def fill_grid_with_dice(self):
+        grid_ = self.generate_grid()
+        cube_coordinates = self.return_cube_coordinates(self.number_of_cubes)
+        # generate dice bitmask list
+        dice_bitmask_list = []
+        for dice in range(self.number_of_cubes):
+            dice_bitmask_list.append(self.generate_dice_bitmask())
+
+        for index in range(self.number_of_cubes):
+            grid_ = self.populate_grid_with_bitmask_based_on_its_position(grid_, dice_bitmask_list[index],
+                                                                          cube_coordinates[index])
+
+        return grid_
+
+    def return_sum_to_be_guessed(self):
+        result = 0
+        if len(self.numbers_chosen) == 0:
+            raise ValueError
+        else:
+            for val in self.numbers_chosen:
+                result += val
+        return result
+
+    def guess_sum(self):
+        while True:
+            start_time = time.time()
+            inp = input("ENTER YOUR GUESS")
+            if time.time() - start_time <= 3:
+                if int(inp) == self.return_sum_to_be_guessed():
+                    print("CONGRATULATIONS RIGHT GUESS!")
+                    return 1
+                else:
+                    self.number_of_attempts -= 1
+                    print("Wrong Guess!, Number of attempts left:", self.number_of_attempts)
+                    if self.number_of_attempts <= 0:
+                        print("GAME OVER")
+                        return 0
+                    else:
+                        return 1
+            else:
+                print("You exceeded time limit!")
+                return 1
+
+    def update(self):
+        self.round_number += 1
+        self.numbers_chosen = []
+        if self.round_number % 3 == 0:
+            self.number_of_cubes += 1
+
+        grd_ = self.fill_grid_with_dice()
+
+        print("DICE VALUES ARE:", self.numbers_chosen)
+        print("-"*space_width)
+        self.print_protocol(grd_)
+        print("-"*space_width)
+
+
+dice_1 = Dice()
+
+state = True
+while state:
+    dice_1.update()
+    state = dice_1.guess_sum()
+
+print("#"*space_width, "\n", "#"*space_width)
